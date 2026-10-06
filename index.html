@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Контентпотребнадзор</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Handjet:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#141420;
+  --panel:#1F1F2E;
+  --line:#3A3A55;
+  --text:#F2F0E6;
+  --muted:#9C9AB5;
+  --toxic:#B6FF3B;
+  --pink:#FF4F8B;
+  --purple:#9B5CFF;
+  --yellow:#FFD23F;
+  --fire:#FF8A1F;
+  --paper:#EFE6CF;
+  --ink:#1A1A22;
+  --stamp:#D7262E;
+  --px:4px;
+  --head:'Press Start 2P',monospace;
+  --body:'Handjet',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#0B0B12;color:var(--text);font-family:var(--body);overflow:hidden;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+
+#stage{position:relative;width:min(100vw,480px);height:var(--tg-viewport-stable-height,100dvh);margin:0 auto;overflow:hidden;background:var(--bg);touch-action:none}
+#cv{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges}
+#fx{position:absolute;inset:0;pointer-events:none;z-index:2}
+.float{position:absolute;transform:translate(-50%,0);font-family:var(--head);font-size:10px;white-space:nowrap;text-shadow:2px 2px 0 #000;animation:up .9s steps(9) forwards}
+@keyframes up{to{transform:translate(-50%,-48px);opacity:0}}
+
+/* HUD */
+#hud{position:absolute;left:0;right:0;top:0;z-index:3;padding:calc(8px + env(safe-area-inset-top)) 10px 0;pointer-events:none;display:flex;flex-direction:column;gap:6px}
+#hud[hidden]{display:none}
+.hrow{display:flex;justify-content:space-between;align-items:center;font-family:var(--head);font-size:11px;text-shadow:2px 2px 0 #000}
+.hearts{color:var(--pink);letter-spacing:2px;font-size:16px}
+.prog{height:8px;background:#000;box-shadow:0 0 0 2px var(--line)}
+.prog i{display:block;height:100%;width:0;background:var(--toxic)}
+.prog-l{display:flex;justify-content:space-between;font-family:var(--head);font-size:7px;color:var(--muted);text-shadow:1px 1px 0 #000}
+.radio{align-self:flex-start;max-width:100%;background:rgba(10,10,18,.85);box-shadow:0 0 0 2px var(--line);padding:5px 7px;font-size:17px;line-height:1.05}
+.radio b{color:var(--fire);font-weight:700}
+.radio b.d{color:var(--toxic)}
+#inv{align-self:center;font-family:var(--head);font-size:9px;color:#fff;background:var(--purple);padding:6px 8px;box-shadow:0 0 0 2px #000}
+#inv[hidden]{display:none}
+.tapzones{position:absolute;left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;padding:0 14px;font-family:var(--head);font-size:16px;color:rgba(255,255,255,.25);z-index:3;pointer-events:none}
+
+/* оверлеи */
+#ov{position:absolute;inset:0;z-index:4;overflow-y:auto;display:flex;flex-direction:column}
+#ov:empty{display:none}
+.scr{min-height:100%;padding:calc(18px + env(safe-area-inset-top)) 16px calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px;
+  background:linear-gradient(rgba(11,11,18,.55),rgba(11,11,18,.92) 45%),repeating-linear-gradient(0deg,rgba(0,0,0,.25) 0 2px,transparent 2px 4px);animation:fade .3s steps(4) both}
+@keyframes fade{from{opacity:0}}
+.tag{font-family:var(--head);font-size:8px;line-height:1.6;color:var(--toxic);text-transform:uppercase}
+h1{font-family:var(--head);font-size:clamp(20px,7.4vw,30px);line-height:1.25;text-shadow:3px 3px 0 #000;word-break:break-word}
+h1 em{font-style:normal;color:var(--toxic)}
+h2{font-family:var(--head);font-size:clamp(14px,4.6vw,18px);line-height:1.4;text-shadow:2px 2px 0 #000}
+p{font-size:21px;line-height:1.15}
+.muted{color:var(--muted)}
+.sp{flex:1;min-height:8px}
+.box{background:var(--panel);padding:12px;box-shadow:0 calc(var(--px)*-1) 0 0 var(--line),0 var(--px) 0 0 var(--line),calc(var(--px)*-1) 0 0 0 var(--line),var(--px) 0 0 0 var(--line);margin:var(--px)}
+.paper{background:var(--paper);color:var(--ink);box-shadow:0 -4px 0 0 #B8AC8E,0 4px 0 0 #B8AC8E,-4px 0 0 0 #B8AC8E,4px 0 0 0 #B8AC8E,8px 8px 0 0 #000}
+.paper .tag{color:var(--stamp)}
+.sym{display:flex;flex-direction:column;gap:9px;margin-top:8px}
+.sym div{display:flex;gap:10px;align-items:flex-start;font-size:20px;line-height:1.1}
+.sym i{flex:none;width:16px;height:16px;margin-top:2px;font-style:normal}
+.btn{font-family:var(--head);font-size:12px;line-height:1.4;text-transform:uppercase;min-height:54px;width:calc(100% - 8px);margin:4px;padding:10px;color:var(--ink);background:var(--toxic);
+  box-shadow:0 -4px 0 0 #000,0 4px 0 0 #000,-4px 0 0 0 #000,4px 0 0 0 #000,inset -4px -4px 0 0 #6FAA12;transition:transform .08s steps(2)}
+.btn:active{transform:translateY(3px);box-shadow:0 -4px 0 0 #000,0 4px 0 0 #000,-4px 0 0 0 #000,4px 0 0 0 #000,inset 4px 4px 0 0 #6FAA12}
+.btn:focus-visible{outline:3px dashed var(--yellow);outline-offset:6px}
+.btn.alt{background:var(--panel);color:var(--text);box-shadow:0 -4px 0 0 #000,0 4px 0 0 #000,-4px 0 0 0 #000,4px 0 0 0 #000,inset -4px -4px 0 0 #121220}
+.blink{animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.35}}
+.msg{font-size:20px;line-height:1.1;padding:9px 10px;background:var(--panel);box-shadow:0 0 0 3px var(--line);animation:fade .3s steps(3) both}
+.msg b{display:block;font-family:var(--head);font-size:8px;margin-bottom:5px;color:var(--toxic)}
+.msg.f b{color:var(--fire)}
+.legend{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:center;font-size:19px;line-height:1.05}
+.legend canvas{width:36px;height:36px;image-rendering:pixelated}
+.act table{width:100%;border-collapse:collapse;margin-top:10px;font-size:20px}
+.act td{padding:6px 0;border-bottom:2px dashed rgba(26,26,34,.25)}
+.act td:last-child{text-align:right;font-weight:700}
+.big{font-family:var(--head);font-size:34px;margin-top:12px}
+.big small{font-size:12px}
+.stamp{position:absolute;right:10px;bottom:14px;width:104px;height:104px;border:4px dashed var(--stamp);color:var(--stamp);display:grid;place-items:center;text-align:center;font-family:var(--head);font-size:7px;line-height:1.6;transform:rotate(-14deg);animation:st .3s .25s steps(4) both}
+@keyframes st{from{transform:rotate(-14deg) scale(2.4);opacity:0}}
+.soon{display:flex;gap:10px;align-items:center;font-size:19px;color:var(--fire);box-shadow:0 0 0 3px var(--fire);padding:10px;margin:3px}
+.soon b{font-family:var(--head);font-size:9px;display:block;margin-bottom:4px}
+.shake{animation:shk .3s steps(6)}
+@keyframes shk{25%{transform:translate(-4px,2px)}50%{transform:translate(4px,-2px)}75%{transform:translate(-2px,-2px)}}
+
+/* ===== заставка: экстренное включение ===== */
+#tv{position:absolute;inset:0;z-index:6;background:#000;overflow:hidden}
+#tv[hidden]{display:none}
+#tv .cam{position:absolute;inset:0;transform-origin:50% 50%;background:linear-gradient(#0A2A7A,#1C4FC4 60%,#0A2A7A)}
+#tv.on .cam{animation:crtOn .55s steps(8) both}
+@keyframes crtOn{0%{transform:scale(1,.004);filter:brightness(4)}45%{transform:scale(1,.004);filter:brightness(4)}100%{transform:none;filter:none}}
+#efir{position:absolute;left:0;top:0;transform-origin:0 0;image-rendering:auto;will-change:transform}
+#static{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;opacity:0;pointer-events:none;mix-blend-mode:screen}
+#tv .crt{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 2px,transparent 2px 4px),radial-gradient(120% 90% at 50% 50%,transparent 60%,rgba(0,0,0,.55))}
+.plates{position:absolute;left:0;top:calc(14px + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:flex-start;gap:6px;z-index:2}
+.plate{font-family:var(--head);color:#fff;text-shadow:2px 2px 0 rgba(0,0,0,.4);transform:translateX(-110%)}
+.plate.red{background:#D7151F;font-size:15px;line-height:1.3;padding:10px 18px 10px 14px;box-shadow:0 4px 0 #fff,6px 0 0 #8E0D13}
+.plate.blue{background:#0D2C8C;font-size:8px;line-height:1.6;padding:7px 14px 7px 14px;box-shadow:0 0 0 2px #3F78FF}
+.plate.blue small{display:block;font-family:var(--body);font-size:16px;line-height:1;color:#BFD3FF}
+#tv.on .plate.red{animation:slide .45s 1s steps(6) forwards}
+#tv.on .plate.blue{animation:slide .45s 1.4s steps(6) forwards}
+@keyframes slide{to{transform:none}}
+.live{position:absolute;right:10px;top:calc(14px + env(safe-area-inset-top));z-index:2;display:flex;align-items:center;gap:6px;background:#fff;color:#D7151F;font-family:var(--head);font-size:8px;padding:6px 8px;opacity:0}
+.live i{width:8px;height:8px;background:#D7151F;animation:blink 1s steps(2) infinite}
+#tv.on .live{animation:fade .2s 1.8s steps(2) forwards}
+#tv.on .live{opacity:1}
+.sub{position:absolute;left:10px;right:10px;bottom:calc(58px + env(safe-area-inset-bottom));z-index:2;min-height:64px;background:rgba(6,18,60,.88);box-shadow:0 0 0 3px #3F78FF;padding:10px 12px;font-size:22px;line-height:1.05;color:#fff}
+.sub:empty{display:none}
+.sub b{display:block;font-family:var(--head);font-size:8px;color:#8FB2FF;margin-bottom:6px}
+.ticker{position:absolute;left:0;right:0;bottom:0;padding-bottom:env(safe-area-inset-bottom);z-index:2;display:flex;align-items:stretch;background:#0A2A7A;box-shadow:0 -3px 0 #fff;height:calc(40px + env(safe-area-inset-bottom));overflow:hidden}
+.ticker b{flex:none;display:flex;align-items:center;padding:0 10px;background:#D7151F;color:#fff;font-family:var(--head);font-size:10px;z-index:1}
+.ticker div{flex:1;overflow:hidden;display:flex;align-items:center}
+.ticker span{white-space:nowrap;font-size:20px;color:#fff;animation:marquee 22s linear infinite;padding-left:100%}
+@keyframes marquee{to{transform:translateX(-100%)}}
+.skip{position:absolute;right:10px;top:calc(48px + env(safe-area-inset-top));z-index:3;font-family:var(--head);font-size:8px;color:#fff;background:rgba(0,0,0,.55);padding:8px 10px;box-shadow:0 0 0 2px rgba(255,255,255,.4)}
+.skip:focus-visible{outline:2px dashed var(--yellow)}
+.tune{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px;cursor:pointer}
+.tune h2{color:#fff}
+.tune p{font-size:20px;color:#BFD3FF}
+.tune .btn{width:auto;padding:10px 22px}
+.tune[hidden],.skip[hidden]{display:none}
+#tv.glitch .cam{animation:gl .5s steps(5) infinite}
+@keyframes gl{0%{transform:translate(0,0);filter:hue-rotate(0)}20%{transform:translate(-6px,2px);filter:hue-rotate(90deg) saturate(3)}40%{transform:translate(5px,-3px)}60%{transform:translate(-3px,0);filter:invert(1)}80%{transform:translate(4px,3px);filter:hue-rotate(-90deg)}}
+.flashw{position:absolute;inset:0;background:#fff;z-index:5;opacity:0;pointer-events:none}
+#tv.flash .flashw{animation:fw .6s steps(6) both}
+@keyframes fw{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="fx"></div>
+  <div id="hud" hidden>
+    <div class="hrow"><span class="hearts" id="hearts">♥♥♥</span><span id="pass">0/24</span></div>
+    <div class="prog"><i id="progi"></i></div>
+    <div class="prog-l"><span>БАЗА КПН</span><span>КУРИЛКА «НА ПЕРЕКУРЕ»</span></div>
+    <div class="radio" id="radio"></div>
+    <div id="inv" hidden class="blink">РУЛЬ: «А ЧТО, ЕСЛИ…»</div>
+  </div>
+  <div class="tapzones" id="tz" hidden><span>◀</span><span>▶</span></div>
+  <div id="ov"></div>
+  <div id="tv" hidden>
+    <div class="cam"><img id="efir" src="assets/efir.jpg" alt="Экстренное включение: ведущий в студии Контентпотребнадзора"></div>
+    <canvas id="static" width="72" height="128"></canvas>
+    <div class="crt"></div>
+    <div class="plates"><div class="plate red">ЭКСТРЕННОЕ<br>ВКЛЮЧЕНИЕ</div><div class="plate blue"><small>Вещает:</small>ОПЕРАТИВНЫЙ ШТАБ<br>КОНТЕНТПОТРЕБНАДЗОРА</div></div>
+    <div class="live"><i></i>ЭФИР <span id="clock"></span></div>
+    <div class="sub" id="sub"></div>
+    <button class="skip" id="skip" hidden>ПРОПУСТИТЬ ▸▸</button>
+    <div class="ticker"><b>СРОЧНО</b><div><span>Вирус креативности поразил учебную группу · Заражённые сохраняют референсы десятками · Стул переименован в «Горизонт» · Сданные работы продолжают докручивать · Группа «На перекуре» собрала совещание в курилке · Карантинная зона готовится к открытию ·</span></div></div>
+    <div class="flashw"></div>
+    <div class="tune" id="tune"><div class="tag blink">● ВХОДЯЩИЙ СИГНАЛ</div><h2>КАНАЛ<br>КОНТЕНТПОТРЕБНАДЗОРА</h2><p>Экстренное включение. Нажмите, чтобы принять эфир</p><button class="btn">▶ Принять эфир</button></div>
+  </div>
+</div>
+
+<script>
+/* ================= Telegram ================= */
+const tg = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData ? window.Telegram.WebApp : null;
+// Ссылка на мини-апп для кнопки «Поделиться». Заменить после регистрации в @BotFather.
+const SHARE_LINK = 'https://t.me/your_bot/quarantine';
+if (tg) {
+  tg.ready(); tg.expand();
+  try { tg.setHeaderColor('#141420'); tg.setBackgroundColor('#0B0B12'); } catch (e) {}
+  try { tg.disableVerticalSwipes(); } catch (e) {}
+}
+const hap = t => { try { tg && tg.HapticFeedback.impactOccurred(t || 'light'); } catch (e) {} };
+const note = t => { try { tg && tg.HapticFeedback.notificationOccurred(t); } catch (e) {} };
+
+/* ================= 8-бит звук ================= */
+let ac;
+function beep(f, d, type, v, delay) {
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'square'; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(v || .05, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d);
+  } catch (e) {}
+}
+const sfx = {
+  pick: () => { beep(660, .06); beep(990, .08, 'square', .05, .06); },
+  hit: () => { beep(120, .25, 'sawtooth', .08); beep(80, .3, 'square', .05, .05); },
+  puddle: () => { [500, 420, 340, 260].forEach((f, i) => beep(f, .1, 'triangle', .06, i * .07)); },
+  fire: () => { [400, 600, 800].forEach((f, i) => beep(f, .08, 'square', .04, i * .06)); },
+  siren: () => { for (let i = 0; i < 4; i++) beep(i % 2 ? 620 : 820, .16, 'square', .035, i * .17); },
+  win: () => { [523, 659, 784, 1046, 784, 1046].forEach((f, i) => beep(f, .14, 'square', .045, i * .12)); },
+  lose: () => { [400, 330, 260, 180].forEach((f, i) => beep(f, .2, 'square', .05, i * .18)); }
+};
+
+/* ================= палитра ================= */
+const C = {
+  asphalt: '#2B2B38', asphalt2: '#262632', line: '#E8E4D0', curb: '#9696A8', walk: '#5C5C70', walk2: '#545467',
+  toxic: '#B6FF3B', toxicDk: '#5E8F14', pink: '#FF4F8B', purple: '#9B5CFF', yellow: '#FFD23F', fire: '#FF8A1F',
+  white: '#F2F0E6', skin: '#F1C7A0', hair: '#3A2A1A', black: '#111118', glass: '#2F4F6F', win: '#FFD86B', winOff: '#1C1C28',
+  cork: '#B98A5A', corkDk: '#7A5530', red: '#E23B3B', grass: '#2F6B3A', grass2: '#3D8048'
+};
+const BLD = ['#3C2F4F', '#2F4F4F', '#4F3C2F', '#30405C', '#523049', '#3B4A2C', '#5A3A3A'];
+const KIND_COL = [C.pink, C.yellow, C.purple];
+const KIND_NAME = ['Острый референцит', 'Нейминговый зуд', '«А что, если…»'];
+const KIND_FLOAT = ['−РЕФЕРЕНЦИТ', '−ЗУД', 'СДАНО!'];
+
+/* ================= холст ================= */
+const stage = document.getElementById('stage'), cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const fx = document.getElementById('fx'), ov = document.getElementById('ov');
+const W = 144, ROAD_L = 30, ROAD_R = 114, LANES = [44, 72, 100];
+let H = 256, S = 1, PY = 200;
+function resize() {
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  S = sw / W; H = Math.ceil(sh / S);
+  cv.width = W; cv.height = H; cv.style.width = sw + 'px'; cv.style.height = H * S + 'px';
+  ctx.imageSmoothingEnabled = false;
+  PY = H - 46;
+}
+addEventListener('resize', resize);
+if (tg) tg.onEvent('viewportChanged', resize);
+resize();
+
+let g = ctx;
+const px = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w, h); };
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ================= спрайты ================= */
+function drawVan(x, y, t, ghost) {
+  if (ghost && Math.floor(t * 12) % 2) return;
+  px(x - 8, y + 3, 2, 5, C.black); px(x + 6, y + 3, 2, 5, C.black);
+  px(x - 8, y + 15, 2, 5, C.black); px(x + 6, y + 15, 2, 5, C.black);
+  px(x - 6, y, 12, 23, C.white);
+  px(x - 6, y + 22, 12, 1, '#B5B3A8');
+  px(x - 5, y + 2, 10, 4, C.glass); px(x - 4, y + 2, 2, 1, '#8FB8D8');
+  px(x - 6, y + 7, 12, 1, '#C8C6BA');
+  px(x - 1, y + 12, 2, 10, C.toxic);                              // полоса КПН
+  px(x - 6, y + 16, 1, 3, C.toxic); px(x + 5, y + 16, 1, 3, C.toxic);
+  const b = Math.floor(t * 6) % 2;                                 // мигалка
+  px(x - 4, y + 9, 4, 2, b ? C.toxic : C.toxicDk); px(x, y + 9, 4, 2, b ? '#7A2A4A' : C.pink);
+  px(x - 5, y, 2, 1, '#FFF6A0'); px(x + 3, y, 2, 1, '#FFF6A0');
+  px(x - 5, y + 22, 2, 1, C.red); px(x + 3, y + 22, 2, 1, C.red);
+}
+function drawPerson(x, y, kind, t, seed) {
+  const bob = Math.floor(t * 4 + seed) % 2;
+  y += bob;
+  if (Math.floor(t * 3 + seed) % 2) { g.fillStyle = 'rgba(182,255,59,.25)'; g.fillRect(x - 6, y - 1, 12, 14); }
+  px(x - 2, y, 4, 4, C.skin); px(x - 2, y, 4, 1, C.hair); px(x - 1, y + 2, 1, 1, C.black); px(x + 1, y + 2, 1, 1, C.black);
+  px(x - 3, y + 4, 6, 5, KIND_COL[kind]); px(x - 4, y + 5, 1, 3, C.skin); px(x + 3, y + 5, 1, 3, C.skin);
+  px(x - 2, y + 9, 1, 3, C.black); px(x + 1, y + 9, 1, 3, C.black);
+  const iy = y - 8 - bob;                                          // симптом над головой
+  if (kind === 0) { px(x - 2, iy, 5, 4, C.pink); px(x - 1, iy + 1, 1, 1, '#fff'); px(x, iy + 4, 1, 2, '#ddd'); }
+  if (kind === 1) { px(x - 3, iy + 1, 7, 4, C.yellow); px(x - 2, iy + 2, 1, 1, C.black); px(x - 4, iy + 2, 1, 2, C.yellow); }
+  if (kind === 2) { px(x - 1, iy, 3, 1, C.purple); px(x + 2, iy + 1, 1, 2, C.purple); px(x, iy + 3, 2, 1, C.purple); px(x, iy + 4, 1, 1, C.purple); px(x, iy + 6, 1, 1, C.purple); }
+}
+function drawBoard(x, y, pins) {                                   // мудборд
+  px(x - 12, y + 13, 24, 2, 'rgba(0,0,0,.35)');
+  px(x - 11, y, 22, 14, C.corkDk); px(x - 10, y + 1, 20, 12, C.cork);
+  pins.forEach(p => { px(x - 10 + p.dx, y + 1 + p.dy, p.w, p.h, p.c); px(x - 10 + p.dx + 1, y + 1 + p.dy, 1, 1, C.red); });
+  px(x - 9, y + 14, 2, 2, C.corkDk); px(x + 7, y + 14, 2, 2, C.corkDk);
+}
+function drawPuddle(x, y, t) {                                     // лужа «а что, если…»
+  g.fillStyle = 'rgba(155,92,255,.55)';
+  g.fillRect(x - 10, y + 2, 20, 6); g.fillRect(x - 7, y, 14, 10);
+  for (let i = 0; i < 6; i++) {
+    const a = t * 3 + i * 1.05;
+    px(x + Math.cos(a) * (2 + i), y + 5 + Math.sin(a) * (1 + i * .5), 1, 1, i % 2 ? '#E3D2FF' : C.purple);
+  }
+}
+function drawFlame(x, y, t) {                                      // огонь от «На перекуре»
+  const f = Math.floor(t * 10) % 2;
+  g.fillStyle = 'rgba(255,138,31,.25)'; g.fillRect(x - 6, y - 3, 12, 16);
+  px(x - 2, y + 5, 5, 7, C.red); px(x - 2, y + 5, 5, 1, '#999'); px(x + 1, y + 3, 2, 2, '#999');
+  px(x - 1, y - 1 + f, 3, 4 - f, C.fire); px(x, y + f, 1, 2, C.yellow);
+}
+function drawGate(y, t) {                                          // въезд в карантин
+  px(ROAD_L - 6, y - 26, ROAD_R - ROAD_L + 12, 18, C.black);
+  px(ROAD_L - 4, y - 24, ROAD_R - ROAD_L + 8, 14, Math.floor(t * 3) % 2 ? C.toxic : '#9BE02A');
+  ctx.font = '8px "Press Start 2P"'; ctx.textBaseline = 'top'; ctx.textAlign = 'center';
+  ctx.fillStyle = '#1A1A22'; ctx.fillText('КАРАНТИН', W / 2, y - 21);
+  px(ROAD_L - 6, y - 8, 4, 16, '#888'); px(ROAD_R + 2, y - 8, 4, 16, '#888');
+  for (let i = 0; i < 10; i++) px(ROAD_L - 2 + i * 9, y + 6, 9, 3, i % 2 ? C.red : C.white);
+}
+
+/* ================= сценография ================= */
+let left = [], right = [], dash = 0;
+function newBld(top) {
+  const h = Math.floor(rnd(22, 52)), win = [];
+  for (let wy = 4; wy < h - 4; wy += 6) win.push([Math.random() < .55, Math.random() < .55]);
+  const park = Math.random() < .14;
+  return { y: top - h - 2, h, c: pick(BLD), win, park };
+}
+function fillCity() {
+  [left, right].forEach(arr => { arr.length = 0; let top = H + 10; while (top > -60) { const b = newBld(top); arr.push(b); top = b.y; } });
+}
+fillCity();
+function scrollCity(dy) {
+  dash = (dash + dy) % 16;
+  [left, right].forEach(arr => {
+    arr.forEach(b => b.y += dy);
+    while (arr.length && arr[0].y > H) arr.shift();
+    if (!arr.length) arr.push(newBld(H));
+    while (arr[arr.length - 1].y > -60) arr.push(newBld(arr[arr.length - 1].y));
+  });
+}
+function drawBld(b, x0, w, side) {
+  if (b.park) {
+    px(x0, b.y, w, b.h, C.grass);
+    for (let i = 0; i < b.h; i += 7) px(x0 + 3 + (i % 2) * 7, b.y + i + 1, 5, 5, C.grass2);
+    return;
+  }
+  px(x0, b.y, w, b.h, b.c);
+  px(side < 0 ? x0 + w - 2 : x0, b.y, 2, b.h, 'rgba(0,0,0,.3)');
+  b.win.forEach((r, i) => r.forEach((on, j) => px(x0 + 3 + j * 7, b.y + 4 + i * 6, 4, 3, on ? C.win : C.winOff)));
+}
+function drawCity() {
+  px(0, 0, W, H, C.asphalt);
+  for (let y = -16 + dash; y < H; y += 16) px(ROAD_L, y, ROAD_R - ROAD_L, 8, C.asphalt2);
+  px(18, 0, 12, H, C.walk); px(ROAD_R, 0, 12, H, C.walk);
+  for (let y = -16 + dash; y < H; y += 8) { px(18, y, 12, 1, C.walk2); px(ROAD_R, y, 12, 1, C.walk2); }
+  px(ROAD_L - 1, 0, 1, H, C.curb); px(ROAD_R, 0, 1, H, C.curb);
+  for (let y = -16 + dash; y < H; y += 16) { px(57, y, 2, 8, C.line); px(85, y, 2, 8, C.line); }
+  left.forEach(b => drawBld(b, 0, 18, -1));
+  right.forEach(b => drawBld(b, 126, 18, 1));
+}
+
+/* ================= игра ================= */
+const GROUP = 24, TOTAL = 6400;
+let mode = 'attract', T = 0, last = 0;
+let G;
+function resetGame() {
+  G = {
+    dist: 0, speed: 72, lane: 1, x: LANES[1], hearts: 3, passengers: [], saved: [0, 0, 0],
+    ents: [], nextRow: 40, invert: 0, ghost: 0, shake: 0, gate: null, finishing: 0, exitY: 0
+  };
+}
+resetGame();
+
+function spawnRow() {
+  const p = G.dist / TOTAL;
+  const lanes = [0, 1, 2].sort(() => Math.random() - .5);
+  const nObs = Math.random() < .25 + p * .45 ? (Math.random() < .2 + p * .35 ? 2 : 1) : 0;
+  let k = 0;
+  for (; k < nObs; k++) {
+    const isP = Math.random() < .28;
+    const e = { type: isP ? 'puddle' : 'board', lane: lanes[k], y: -24 };
+    if (!isP) e.pins = Array.from({ length: 5 }, () => ({ dx: Math.floor(rnd(0, 15)), dy: Math.floor(rnd(0, 8)), w: Math.floor(rnd(3, 6)), h: Math.floor(rnd(3, 5)), c: pick([C.pink, C.yellow, '#7FD3FF', C.white, C.purple, C.toxic]) }));
+    G.ents.push(e);
+  }
+  const free = lanes.slice(k);
+  const need = GROUP - G.saved.reduce((a, b) => a + b, 0) - G.ents.filter(e => e.type === 'person').length;
+  if (free.length && need > 0 && Math.random() < .5) G.ents.push({ type: 'person', lane: free.shift(), y: -18, kind: Math.floor(Math.random() * 3), seed: Math.random() * 4 });
+  if (free.length && G.hearts < 3 && Math.random() < .06) G.ents.push({ type: 'flame', lane: free.shift(), y: -16 });
+}
+
+function floatText(x, y, text, color) {
+  const f = document.createElement('div'); f.className = 'float';
+  f.style.left = x * S + 'px'; f.style.top = y * S + 'px'; f.style.color = color; f.textContent = text;
+  fx.appendChild(f); setTimeout(() => f.remove(), 900);
+}
+
+function steer(dir) {
+  if (mode !== 'play' || G.finishing) return;
+  if (G.invert > 0) dir = -dir;
+  const nl = clamp(G.lane + dir, 0, 2);
+  if (nl !== G.lane) { G.lane = nl; hap('light'); beep(300, .03, 'square', .02); }
+}
+
+function collide(e) {
+  const p = G.dist / TOTAL;
+  if (e.type === 'person') {
+    G.saved[e.kind]++; G.passengers.push(e.kind);
+    floatText(G.x, PY - 14, KIND_FLOAT[e.kind], KIND_COL[e.kind]);
+    sfx.pick(); hap('medium');
+    if (G.saved.reduce((a, b) => a + b, 0) === GROUP) { floatText(W / 2, PY - 40, 'ВСЯ ГРУППА!', C.toxic); note('success'); }
+    return true;
+  }
+  if (e.type === 'flame') {
+    G.hearts = Math.min(3, G.hearts + 1);
+    floatText(G.x, PY - 14, '+ОГОНЬ', C.fire); sfx.fire(); note('success');
+    return true;
+  }
+  if (G.ghost > 0) return false;
+  if (e.type === 'board') {
+    G.hearts--; G.ghost = 1.4; G.shake = .3;
+    sfx.hit(); note('error');
+    stage.classList.remove('shake'); void stage.offsetWidth; stage.classList.add('shake');
+    if (G.passengers.length) {
+      const k = G.passengers.splice(Math.floor(Math.random() * G.passengers.length), 1)[0];
+      G.saved[k]--;
+      floatText(G.x, PY - 14, 'СБЕЖАЛ ДОКРУЧИВАТЬ', C.pink);
+    } else floatText(G.x, PY - 14, 'МУДБОРД!', C.pink);
+    if (G.hearts <= 0) gameOver();
+    return true;
+  }
+  if (e.type === 'puddle') {
+    G.invert = 3.2; G.ghost = .4;
+    sfx.puddle(); note('warning');
+    floatText(G.x, PY - 14, 'А ЧТО, ЕСЛИ…', C.purple);
+    return false;
+  }
+}
+
+function update(dt) {
+  if (mode === 'attract') {
+    scrollCity(40 * dt);
+    if (Math.random() < dt * .4) G.lane = Math.floor(Math.random() * 3);
+    G.x += (LANES[G.lane] - G.x) * Math.min(1, dt * 8);
+    return;
+  }
+  if (mode !== 'play') return;
+  const p = Math.min(1, G.dist / TOTAL);
+  G.speed = G.finishing ? Math.max(30, G.speed - 60 * dt) : 72 + p * 78;
+  const dy = G.speed * dt;
+  G.dist += dy;
+  scrollCity(dy);
+  G.x += (LANES[G.lane] - G.x) * Math.min(1, dt * 14);
+  G.invert = Math.max(0, G.invert - dt); G.ghost = Math.max(0, G.ghost - dt);
+  if (G.finishing) G.exitY += (40 + G.exitY * 2) * dt;          // въезжаем в зону
+
+  // ряды препятствий и заражённых
+  if (!G.gate) {
+    G.nextRow -= dy;
+    if (G.nextRow <= 0) { spawnRow(); G.nextRow = 58 - p * 18; }
+    if (G.dist >= TOTAL) G.gate = { y: -40 };
+  } else {
+    G.gate.y += dy;
+    if (G.gate.y > PY - 60 && !G.finishing) { G.finishing = 1; G.ents = []; finishRun(); }
+  }
+
+  for (let i = G.ents.length - 1; i >= 0; i--) {
+    const e = G.ents[i];
+    e.y += dy;
+    if (e.y > H + 20) { G.ents.splice(i, 1); continue; }
+    const ex = LANES[e.lane], eh = e.type === 'board' ? 14 : e.type === 'puddle' ? 10 : 12;
+    if (!e.hit && Math.abs(ex - G.x) < 12 && e.y + eh > PY + 2 && e.y < PY + 21) {
+      e.hit = true;
+      if (collide(e)) G.ents.splice(i, 1);
+      if (mode !== 'play') return;
+    }
+  }
+  updateHud(p);
+}
+
+function draw() {
+  ctx.save();
+  if (G.shake > 0) { G.shake -= 1 / 60; ctx.translate(Math.round(rnd(-2, 2)), Math.round(rnd(-2, 2))); }
+  drawCity();
+  if (G.gate) drawGate(G.gate.y, T);
+  G.ents.forEach(e => {
+    const x = LANES[e.lane];
+    if (e.type === 'person') drawPerson(x, e.y, e.kind, T, e.seed);
+    else if (e.type === 'board') drawBoard(x, e.y, e.pins);
+    else if (e.type === 'puddle') drawPuddle(x, e.y, T);
+    else if (e.type === 'flame') drawFlame(x, e.y, T);
+  });
+  drawVan(G.x, PY - G.exitY, T, G.ghost > 0);
+  if (G.invert > 0) { ctx.fillStyle = 'rgba(155,92,255,.12)'; ctx.fillRect(0, 0, W, H); }
+  ctx.restore();
+}
+
+function frame(t) {
+  const dt = Math.min(.05, last ? (t - last) / 1000 : 0); last = t; T += dt;
+  update(dt); draw();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ================= управление ================= */
+stage.addEventListener('pointerdown', e => {
+  if (mode !== 'play') return;
+  const r = stage.getBoundingClientRect();
+  steer(e.clientX - r.left < r.width / 2 ? -1 : 1);
+});
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'ф') steer(-1);
+  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'в') steer(1);
+});
+
+/* ================= HUD и рация ================= */
+const RADIO = [
+  ['d', 'ДИСПЕТЧЕР', 'знак «СТОП» переименован в «Паузу для рефлексии».'],
+  ['f', 'НА ПЕРЕКУРЕ', 'огонь держим, зону готовим. Везите всех.'],
+  ['d', 'ДИСПЕТЧЕР', 'впереди мудборды размером с автобус. Объезжайте.'],
+  ['d', 'ДИСПЕТЧЕР', 'светофор теперь «Трёхцветная концепция ожидания».'],
+  ['f', 'НА ПЕРЕКУРЕ', 'совещание в курилке идёт, огонь передаём по цепочке.'],
+  ['d', 'ДИСПЕТЧЕР', 'фиолетовые лужи «а что, если…» путают руль.'],
+  ['d', 'ДИСПЕТЧЕР', 'улица Мира переименована в «Пространство мира v2_final».'],
+  ['f', 'НА ПЕРЕКУРЕ', 'видите 🔥 на дороге — подбирайте, это от нас.']
+];
+let radioI = 0, radioT = 0;
+const $ = id => document.getElementById(id);
+function setRadio() { const r = RADIO[radioI++ % RADIO.length]; $('radio').innerHTML = `<b class="${r[0]}">${r[1]}:</b> ${r[2]}`; }
+function updateHud(p) {
+  $('hearts').textContent = '♥'.repeat(Math.max(0, G.hearts)) + '♡'.repeat(3 - Math.max(0, G.hearts));
+  $('pass').textContent = `СПАСЕНО ${G.saved.reduce((a, b) => a + b, 0)}/${GROUP}`;
+  $('progi').style.width = (p * 100).toFixed(1) + '%';
+  $('inv').hidden = G.invert <= 0;
+  radioT += 1 / 60; if (radioT > 5.5) { radioT = 0; setRadio(); }
+}
+function showHud(on) { $('hud').hidden = !on; $('tz').hidden = !on; }
+
+/* ================= экраны ================= */
+let ovShownAt = 0;
+function overlay(html) { ov.innerHTML = `<div class="scr">${html}</div>`; ov.scrollTop = 0; ovShownAt = performance.now(); }
+ov.addEventListener('click', e => { if (performance.now() - ovShownAt < 350) { e.stopPropagation(); e.preventDefault(); } }, true);
+function closeOverlay() { ov.innerHTML = ''; }
+
+function useCtx(c, fn) { const keep = g; g = c; fn(); g = keep; }
+
+function intro() {
+  mode = 'attract'; showHud(false);
+  overlay(`
+    <div class="tag blink">⚠ Экстренное оповещение</div>
+    <h1>КОНТЕНТ<br><em>ПОТРЕБ</em><br>НАДЗОР</h1>
+    <p>Вирус креативности поразил целую учебную группу. Заражённые сохраняют референсы десятками, переименовывают всё вокруг и докручивают уже сданное.</p>
+    <div class="box paper">
+      <div class="tag">Симптомы</div>
+      <div class="sym">
+        <div><i style="color:var(--pink)">■</i><span><b>Острый референцит</b> — сотни картинок, ни одной сделанной.</span></div>
+        <div><i style="color:#B08A00">■</i><span><b>Нейминговый зуд</b> — стул больше не стул. Стул — «Горизонт».</span></div>
+        <div><i style="color:var(--purple)">■</i><span><b>Хроническое «а что, если…»</b> — сдано, но не отпущено.</span></div>
+      </div>
+    </div>
+    <div class="sp"></div>
+    <button class="btn" id="go">▶ Завести машину</button>`);
+  $('go').onclick = () => { hap('medium'); sfx.siren(); briefing(); };
+}
+
+function briefing() {
+  overlay(`
+    <div class="tag">Курилка · срочное совещание</div>
+    <h2>Совещание в курилке</h2>
+    <div class="msg"><b>КОНТЕНТПОТРЕБНАДЗОР</b>Группа из 24 человек разбрелась по городу. Заражены все.</div>
+    <div class="msg f"><b>«НА ПЕРЕКУРЕ»</b>Ситуацию взяли под контроль. Делимся огнём и строим цифровую карантинную зону. Готовим к открытию 🔥</div>
+    <div class="msg"><b>КОНТЕНТПОТРЕБНАДЗОР</b>Ваша машина — последняя надежда. Соберите всех и довезите до курилки.</div>
+    <div class="box">
+      <div class="legend">
+        <canvas width="24" height="24" data-i="0"></canvas><span>Заражённые. Наезжайте — садятся в машину.</span>
+        <canvas width="24" height="24" data-i="1"></canvas><span>Мудборд. Удар — минус жизнь и пассажир.</span>
+        <canvas width="24" height="24" data-i="2"></canvas><span>Лужа «а что, если…» путает руль.</span>
+        <canvas width="24" height="24" data-i="3"></canvas><span>Огонь от «На перекуре» — плюс жизнь.</span>
+      </div>
+      <p class="muted" style="margin-top:10px;font-size:19px">Тап по левой или правой половине экрана — смена полосы.</p>
+    </div>
+    <div class="sp"></div>
+    <button class="btn" id="go">🚨 Выезжаем</button>`);
+  paintLegendIcons();
+  $('go').onclick = () => { hap('heavy'); start(); };
+}
+function paintLegendIcons() {
+  const fns = [
+    () => drawPerson(12, 9, 0, 0, 0),
+    () => drawBoard(12, 5, [{ dx: 2, dy: 2, w: 5, h: 4, c: C.pink }, { dx: 10, dy: 5, w: 5, h: 3, c: '#7FD3FF' }, { dx: 8, dy: 1, w: 3, h: 3, c: C.yellow }]),
+    () => drawPuddle(12, 7, 1),
+    () => drawFlame(12, 7, 0)
+  ];
+  ov.querySelectorAll('.legend canvas').forEach(c => {
+    const cx = c.getContext('2d'); cx.imageSmoothingEnabled = false;
+    useCtx(cx, fns[+c.dataset.i]);
+  });
+}
+
+function start() {
+  closeOverlay(); resetGame(); fillCity();
+  mode = 'play'; showHud(true); radioI = 0; radioT = 0; setRadio(); updateHud(0);
+}
+
+function rankFor(t) {
+  if (t >= 22) return 'Главный санитарный врач по креативу';
+  if (t >= 17) return 'Старший инспектор по докручиванию';
+  if (t >= 12) return 'Дежурный по курилке';
+  if (t >= 6) return 'Стажёр в бахилах';
+  return 'Заразился сам. Уже сохраняет референсы';
+}
+
+function gameOver() {
+  mode = 'over'; showHud(false); sfx.lose(); note('error');
+  const total = G.saved.reduce((a, b) => a + b, 0);
+  setTimeout(() => overlay(`
+    <div class="tag" style="color:var(--pink)">Машина заражена</div>
+    <h1>КОНЕЦ<br><em style="color:var(--pink)">СМЕНЫ</em></h1>
+    <p>Мудборды взяли верх. Водитель начал сохранять референсы и предложил переименовать машину в «Мобильный инсайт».</p>
+    <div class="box"><p class="muted">Успели подобрать: <b style="color:var(--text)">${total} из ${GROUP}</b>, но до карантина не доехали.</p></div>
+    <div class="sp"></div>
+    <button class="btn" id="go">↻ Ещё рейс</button>
+    <button class="btn alt" id="home">В штаб</button>`), 500);
+  setTimeout(() => { $('go').onclick = () => { hap('medium'); sfx.siren(); start(); }; $('home').onclick = intro; }, 520);
+}
+
+function finishRun() {
+  sfx.win(); note('success');
+  setTimeout(() => { mode = 'over'; showHud(false); finalAct(); }, 1800);
+}
+
+function finalAct() {
+  const s = G.saved, total = s[0] + s[1] + s[2], rank = rankFor(total);
+  const no = Math.floor(rnd(100, 999)) + '-КПН';
+  const date = new Date().toLocaleDateString('ru', { day: '2-digit', month: 'long', year: 'numeric' });
+  overlay(`
+    <div class="tag">Доставлено в курилку «На перекуре»</div>
+    <div class="box paper act" style="position:relative;padding:16px 14px 18px">
+      <div class="tag">Акт № ${no} · ${date}</div>
+      <h2 style="text-shadow:none;font-size:11px;margin-top:8px">о помещении креативно заражённых в цифровую карантинную зону</h2>
+      <table>
+        <tr><td>■ ${KIND_NAME[0]}</td><td>${s[0]}</td></tr>
+        <tr><td>■ ${KIND_NAME[1]}</td><td>${s[1]}</td></tr>
+        <tr><td>■ ${KIND_NAME[2]}</td><td>${s[2]}</td></tr>
+      </table>
+      <div class="big">${total}<small> / ${GROUP}</small></div>
+      <p style="font-size:20px;max-width:60%">Звание:<br><b>${rank}</b></p>
+      <div class="stamp">КОНТЕНТ-<br>ПОТРЕБ-<br>НАДЗОР<br>★<br>ОБЕЗ-<br>ВРЕЖЕНО</div>
+    </div>
+    <div class="soon"><span style="font-size:22px">🔥</span><div><b>Карантинная зона</b>Готовим к открытию. Огонь уже горит.</div></div>
+    <div class="sp"></div>
+    <button class="btn" id="share">Поделиться актом</button>
+    <button class="btn alt" id="again">↻ Ещё рейс</button>`);
+  const text = `Я — ${rank.toLowerCase()} Контентпотребнадзора. Довёз(ла) ${total} из ${GROUP} креативно заражённых до карантина «На перекуре». Сможешь лучше?`;
+  $('share').onclick = () => {
+    hap('medium');
+    const url = 'https://t.me/share/url?url=' + encodeURIComponent(SHARE_LINK) + '&text=' + encodeURIComponent(text);
+    if (tg) tg.openTelegramLink(url);
+    else if (navigator.share) navigator.share({ text, url: SHARE_LINK }).catch(() => {});
+    else window.open(url, '_blank');
+  };
+  $('again').onclick = () => { hap('medium'); sfx.siren(); start(); };
+}
+
+
+/* ================= заставка: экстренное включение ================= */
+const tv = document.getElementById('tv'), efir = document.getElementById('efir'), stat = document.getElementById('static');
+const sctx = stat.getContext('2d');
+let tvRun = false, tvT0 = 0, tvDone = false, staticAmt = 1, cues = [], camKeys = [];
+efir.onerror = () => { efir.style.display = 'none'; };            // без картинки — синяя студия-заглушка
+function drawStatic() {
+  if (tv.hidden) return;
+  stat.style.opacity = staticAmt;
+  if (staticAmt > 0.01) {
+    const d = sctx.createImageData(72, 128);
+    for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255 | 0; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
+    sctx.putImageData(d, 0, 0);
+  }
+  if (tvRun) tvFrame();
+  requestAnimationFrame(drawStatic);
+}
+function placeCam(u, v, z) {
+  const iw = efir.naturalWidth || 1672, ih = efir.naturalHeight || 941;
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  const sc = Math.max(sw / iw, sh / ih) * z, w = iw * sc, h = ih * sc;
+  const x = clamp(sw / 2 - u * w, sw - w, 0), y = clamp(sh / 2 - v * h, sh - h, 0);
+  efir.style.width = iw + 'px'; efir.style.height = ih + 'px';
+  efir.style.transform = `translate(${x}px,${y}px) scale(${sc})`;
+}
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+function tvFrame() {
+  const t = (performance.now() - tvT0) / 1000;
+  while (cues.length && cues[0][0] <= t) cues.shift()[1]();
+  let a = camKeys[0], b = camKeys[camKeys.length - 1];
+  for (let i = 0; i < camKeys.length - 1; i++) if (t >= camKeys[i][0] && t < camKeys[i + 1][0]) { a = camKeys[i]; b = camKeys[i + 1]; break; }
+  const k = b[0] > a[0] ? ease(clamp((t - a[0]) / (b[0] - a[0]), 0, 1)) : 1;
+  placeCam(a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k, a[3] + (b[3] - a[3]) * k);
+}
+let typeTimer;
+function say(who, text) {
+  clearInterval(typeTimer);
+  const el = document.getElementById('sub'); let n = 0;
+  el.innerHTML = `<b>${who}</b><span></span>`;
+  const span = el.querySelector('span');
+  typeTimer = setInterval(() => {
+    span.textContent = text.slice(0, ++n);
+    if (n % 3 === 0) beep(rnd(380, 520), .025, 'square', .015);
+    if (n >= text.length) clearInterval(typeTimer);
+  }, 26);
+}
+function jingle() {
+  [[392, 0], [523, .14], [659, .28], [784, .42], [659, .7], [784, .84], [1046, 1.0]].forEach(([f, d]) => beep(f, .16, 'square', .045, d));
+  [[196, 0], [262, .42], [330, .84]].forEach(([f, d]) => beep(f, .4, 'triangle', .05, d));
+}
+function newsIntro() {
+  tv.hidden = false; tvDone = false; tvRun = false; staticAmt = 1;
+  tv.className = '';
+  document.getElementById('sub').innerHTML = '';
+  document.getElementById('tune').hidden = false;
+  document.getElementById('skip').hidden = true;
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+  placeCam(.44, .42, 1);
+  requestAnimationFrame(drawStatic);
+}
+function acceptBroadcast() {
+  document.getElementById('tune').hidden = true;
+  document.getElementById('skip').hidden = false;
+  hap('medium'); jingle();
+  staticAmt = .9; tv.classList.add('on');
+  // камера: u, v — центр кадра в долях картинки, z — зум
+  camKeys = [[0, .44, .42, 1], [4.6, .44, .4, 1.1], [7.0, .74, .6, 1.35], [9.8, .85, .5, 1.45], [11.2, .86, .5, 1.6], [11.9, .87, .5, 4.2]];
+  cues = [
+    [.15, () => { staticAmt = .25; }], [.5, () => { staticAmt = .06; }],
+    [.8, () => say('ВЕДУЩИЙ', 'Добрый вечер. Экстренное включение из оперативного штаба Контентпотребнадзора.')],
+    [3.4, () => say('ВЕДУЩИЙ', 'Вирус креативности поразил целую учебную группу.')],
+    [5.4, () => say('ВЕДУЩИЙ', 'Симптомы: острый референцит, нейминговый зуд и хроническое «а что, если…»')],
+    [8.2, () => say('С МЕСТА СОБЫТИЙ', 'Машина Контентпотребнадзора уже выехала. Группа «На перекуре» готовит карантин.')],
+    [10.6, () => say('ВЕДУЩИЙ', 'Водитель, на связь! Город ждёт.')],
+    [11.6, () => { tv.classList.add('glitch'); staticAmt = .5; sfx.puddle(); }],
+    [12.1, () => { tv.classList.add('flash'); beep(1200, .3, 'square', .04); }],
+    [12.4, endBroadcast]
+  ];
+  tvT0 = performance.now(); tvRun = true;
+}
+function endBroadcast() {
+  if (tvDone) return; tvDone = true; tvRun = false;
+  clearInterval(typeTimer);
+  tv.hidden = true; tv.className = '';
+  intro();
+}
+document.getElementById('tune').addEventListener('click', acceptBroadcast);
+document.getElementById('skip').addEventListener('click', e => { e.stopPropagation(); hap('light'); endBroadcast(); });
+addEventListener('resize', () => { if (!tv.hidden && !tvRun) placeCam(.44, .42, 1); });
+
+document.fonts && document.fonts.load('8px "Press Start 2P"');
+intro();
+newsIntro();
+</script>
+</body>
+</html>
