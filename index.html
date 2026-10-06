@@ -639,7 +639,10 @@ function finalAct() {
 const tv = document.getElementById('tv'), efir = document.getElementById('efir'), stat = document.getElementById('static');
 const sctx = stat.getContext('2d');
 let tvRun = false, tvT0 = 0, tvDone = false, staticAmt = 1, cues = [], camKeys = [];
-efir.onerror = () => { efir.style.display = 'none'; };            // без картинки — синяя студия-заглушка
+efir.onerror = () => {                                           // запасной путь: картинка в корне сайта, иначе синяя студия-заглушка
+  if (!efir.dataset.retry) { efir.dataset.retry = 1; efir.src = 'efir.jpg'; } else efir.style.display = 'none';
+};
+if (efir.complete && !efir.naturalWidth) efir.onerror();          // ошибка могла случиться до подписки
 function drawStatic() {
   if (tv.hidden) return;
   stat.style.opacity = staticAmt;
